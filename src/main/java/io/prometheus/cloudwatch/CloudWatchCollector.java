@@ -56,6 +56,7 @@ public class CloudWatchCollector extends Collector {
       Map<String,List<String>> awsDimensionSelect;
       Map<String,List<String>> awsDimensionSelectRegex;
       String help;
+      String awsRegion;
       boolean cloudwatchTimestamp;
     }
 
@@ -191,6 +192,11 @@ public class CloudWatchCollector extends Collector {
               rule.cloudwatchTimestamp = (Boolean)yamlMetricRule.get("set_timestamp");
           } else {
               rule.cloudwatchTimestamp = defaultCloudwatchTimestamp;
+          }
+          if (yamlMetricRule.containsKey("aws_region")) {
+            rule.awsRegion = (String)yamlMetricRule.get("aws_region");
+          } else {
+            rule.awsRegion = (String) config.get("region");
           }
         }
 
@@ -363,6 +369,14 @@ public class CloudWatchCollector extends Collector {
         HashMap<String, ArrayList<MetricFamilySamples.Sample>> extendedSamples = new HashMap<String, ArrayList<MetricFamilySamples.Sample>>();
 
         String unit = null;
+
+        // If region is specified, set the corresponding endpoint
+        if (rule.awsRegion != null) {
+            Region region = RegionUtils.getRegion(rule.awsRegion);
+            if (region != null) {
+                config.client.setEndpoint(getMonitoringEndpoint(region));
+            }
+        }
 
         if (rule.awsNamespace.equals("AWS/DynamoDB")
                 && rule.awsDimensions.contains("GlobalSecondaryIndexName")
